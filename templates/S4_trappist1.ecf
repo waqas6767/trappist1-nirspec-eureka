@@ -1,0 +1,46 @@
+# Eureka! v1.4 control file, Stage 4 (light curves)
+# Spectroscopic light curves in the 67 wavelength bins of Espinoza et al. (2025),
+# the same bins as the DREAMS spectrum and the model grid of Waqas & Hidayat.
+nspecchan       None
+compute_white   True
+s4_order        None
+wave_min        0.6185            # white light curve: full PRISM range used in the bins
+wave_max        5.2935
+wave_input      {BINS}
+allapers        False
+
+mad_sigma       7
+mad_box_width   21
+
+recordDrift     True              # record drift/jitter for use as decorrelation vectors
+correctDrift    False
+
+clip_unbinned   False
+clip_binned     True
+sigma           10
+box_width       31
+maxiters        5
+boundary        fill
+fill_value      mask
+
+# Limb darkening is computed separately for TRAPPIST-1 (Teff about 2,570 K),
+# outside Eureka!, so it is not computed here.
+compute_ld      False
+metallicity     0.04
+teff            2566
+logg            5.2
+minmu           0.2
+exotic_ld_direc None
+exotic_ld_grid  kurucz
+spam_file       None
+
+isplots_S4      3
+vmin            0.97
+vmax            1.03
+time_axis       'y'
+hide_plots      True
+verbose         True
+
+topdir          {TOPDIR}
+inputdir        {INPUTDIR}
+outputdir       {OUTPUTDIR}

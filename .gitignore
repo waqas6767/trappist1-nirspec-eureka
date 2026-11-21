@@ -1,0 +1,13 @@
+# Data, outputs and environments live outside version control
+jwst_data/
+reduction/
+reduction_rateints/
+crds_cache/
+envs/
+env.sh
+*.fits
+*.h5
+*.log
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

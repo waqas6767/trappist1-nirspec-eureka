@@ -1,0 +1,53 @@
+# Eureka! v1.4 control file, Stage 3 (spectral extraction: calints -> 1-D spectra)
+# Check the Stage 3 figures of the first visit and adjust ywindow, xwindow,
+# spec_hw and bg_hw if needed before reducing all visits.
+ncpu            {S3_NCPU}
+nfiles          1
+max_memory      {S3_MAXMEM}
+indep_batches   False
+suffix          calints
+calibrated_spectra  False
+
+# Subarray region of interest (SUB512 is 32 rows x 512 columns)
+ywindow         [2,30]
+xwindow         [10,505]          # wide on purpose; wavelengths are cut in Stage 4
+src_pos_type    gaussian
+record_ypos     True
+dqmask          True
+expand          1
+
+# Outlier rejection along the time axis (background region only; deep transits)
+ff_outlier      False
+bg_thresh       [5,5]
+
+# Background: column-by-column, outside +/- bg_hw rows from the trace
+bg_hw           8
+bg_deg          0
+bg_method       median
+p3thresh        5
+
+# Optimal extraction
+spec_hw         4
+fittype         meddata
+median_thresh   5
+window_len      13
+prof_deg        3
+p5thresh        10
+p7thresh        10
+
+curvature       correct
+
+isplots_S3      3
+nplots          5
+vmin            0.97
+vmax            1.03
+time_axis       'y'
+testing_S3      False
+hide_plots      True
+save_output     True
+save_fluxdata   False
+verbose         True
+
+topdir          {TOPDIR}
+inputdir        {INPUTDIR}
+outputdir       {OUTPUTDIR}

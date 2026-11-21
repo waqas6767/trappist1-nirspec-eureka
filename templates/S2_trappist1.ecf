@@ -1,0 +1,12 @@
+# Eureka! v1.4 control file, Stage 2 (calibration: rateints -> calints)
+# Flat-fielding and flux calibration are skipped: they are not needed for
+# relative transit depths and their skipping gives better uncertainties.
+suffix                  rateints
+skip_wavecorr           True
+skip_flat_field         True
+skip_photom             True
+skip_extract_1d         True
+hide_plots              True
+topdir                  {TOPDIR}
+inputdir                {INPUTDIR}
+outputdir               {OUTPUTDIR}

@@ -1,0 +1,67 @@
+# Eureka! v1.4 control file, Stage 1 (detector processing: uncal -> rateints)
+# TRAPPIST-1, NIRSpec PRISM/CLEAR, SUB512, NRSRAPID (GO 1331, 6456, 9256)
+# Placeholders in {braces} are filled in by run_reduction.py for each visit.
+suffix              uncal
+maximum_cores       '{MAXCORES}'      # cores used by the jwst pipeline steps (filled in by run_reduction.py)
+
+# Pipeline steps (all run)
+skip_saturation     False
+skip_superbias      False
+skip_refpix         False
+skip_linearity      False
+skip_dark_current   False
+skip_jump           False
+skip_ramp_fitting   False
+skip_gain_scale     False
+jump_rejection_threshold  15.0  # larger than the default 4 is recommended for time series
+
+custom_linearity    False
+linearity_file      None
+custom_mask         False
+mask_file           None
+
+bias_correction     None
+bias_group          1
+bias_smooth_length  201
+custom_bias         False
+superbias_file      None
+
+# Saturation: TRAPPIST-1 is close to saturation near the peak of its spectrum
+# (about 1.1-1.5 um). Flag saturation more aggressively and also flag the group
+# before the first saturated one, so partially saturated ramps are not biased.
+update_sat_flags    True
+expand_prev_group   True
+dq_sat_mode         percentile
+dq_sat_percentile   50
+dq_sat_columns      [[0, 0], [0,0], [0,0], [0,0], [0,0]]
+
+# Group-level background (1/f noise) subtraction, with the curved trace masked
+grouplevel_bg       True
+ncpu                {S1_NCPU}
+bg_y1               6           # ignored because masktrace = True
+bg_y2               26          # ignored because masktrace = True
+bg_deg              0
+bg_method           median
+p3thresh            5
+bg_row_by_row       False
+bg_x1               None
+bg_x2               None
+masktrace           True
+window_len          11
+expand_mask         8
+ignore_low          None
+ignore_hi           None
+refpix_corr         False
+npix_top            8
+npix_bot            8
+
+# Diagnostics
+isplots_S1          3
+nplots              5
+hide_plots          True
+verbose             True
+
+# Directories. inputdir and outputdir are relative to topdir.
+topdir              {TOPDIR}
+inputdir            {INPUTDIR}
+outputdir           {OUTPUTDIR}
