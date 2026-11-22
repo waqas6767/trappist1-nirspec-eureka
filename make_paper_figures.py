@@ -43,6 +43,7 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.ticker
 
 plt.rcParams.update({"font.size": 9, "axes.labelsize": 9, "legend.fontsize": 7.5,
                      "xtick.direction": "in", "ytick.direction": "in",
@@ -175,10 +176,13 @@ def fig_radii(rows, out):
         ax.set_xticklabels([visit_label(x["visit"]) for x in r], rotation=75, fontsize=6.5)
         ax.set_ylabel(r"$R_p/R_\star$")
         ax.set_title(f"TRAPPIST-1 {pl}", fontsize=9)
+    h, l = axs[0].get_legend_handles_labels()
     for prog, c in PROG_COLOR.items():
-        axs[1].plot([], [], "o", color=c, label=prog)
-    axs[0].legend(loc="lower left", frameon=False)
-    axs[1].legend(loc="lower left", frameon=False, ncol=2)
+        h.append(axs[0].plot([], [], "o", color=c)[0])
+        l.append(prog)
+    h.append(axs[0].plot([], [], "s", color="0.4", mfc="white")[0])
+    l.append("partial transit")
+    fig.legend(h, l, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=6, frameon=False)
     fig.savefig(os.path.join(out, "radii.pdf"))
     plt.close(fig)
 
@@ -202,8 +206,10 @@ def fig_oc(rows, out):
         ax.axhline(0, color="0.5", lw=0.7, ls="--")
         ax.set_ylabel(f"O$-$C, {pl} (min)")
     for prog, c in PROG_COLOR.items():
-        axs[1].plot([], [], "o", color=c, label=prog)
-    axs[1].legend(frameon=False, loc="upper left")
+        axs[0].plot([], [], "o", color=c, label=prog)
+    axs[0].legend(frameon=False, loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=3)
+    axs[1].xaxis.set_major_locator(matplotlib.ticker.MultipleLocator(1.0))
+    axs[1].xaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter("%d"))
     axs[1].set_xlabel("year")
     fig.savefig(os.path.join(out, "oc.pdf"))
     plt.close(fig)

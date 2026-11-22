@@ -20,3 +20,13 @@ Visits with special treatment: in `jw06456001001` a flare during the egress of e
 `jw09256007001` the transit of e overlaps a transit-like event and only b is fitted; in `jw09256010001`
 about 45 empty integrations required disabling the per-integration trace-position fit (Stage 3,
 `record_ypos=False`) and the bad-column search (Stage 4, `mad_sigma=None`).
+
+The spectra were produced with double-precision white-light parameters (see "Transmission spectra"
+in the main README). Summary of the combined spectra:
+
+| Product | Visits | Visit scatter (reduced chi2) | Flat-line chi2 | Median error |
+|---|---|---|---|---|
+| `e_uncorrected` | 17 | 2.87 | 95.5/65 | 37 ppm |
+| `b_combined` | 14 | 1.52 | 399.4/66 | 34 ppm |
+| `e_bcorr_ratio` | 13 | 1.33 | 112.9/65 | 36 ppm |
+| `e_bcorr_diff` | 13 | 1.33 | 48.7/65 | 44 ppm |
