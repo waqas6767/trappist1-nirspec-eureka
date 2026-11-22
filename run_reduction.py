@@ -42,6 +42,9 @@ Options
     --min-free-gb G    start a new visit only when this much memory is free (default 12)
     --offline          use only the local CRDS cache (after --prefetch-crds); no network needed
     --redo             reduce again even if S4_DONE exists
+    --start-stage N    begin at stage N (2-4), reusing the newest outputs of the earlier stages
+    --tag NAME         write to reduction_NAME/ (to compare alternative settings)
+    --set S1:KEY=VAL   override a control-file setting, e.g. --set S1:update_sat_flags=False
 """
 import argparse
 import glob
@@ -81,7 +84,20 @@ def mem_available_gb():
     return float("inf")
 
 
-def write_ecf(stage, visit, ecfdir, topdir, inputdir, outputdir, cores):
+def apply_overrides(text, overrides):
+    """Replace the value of each 'key' line of a control file (overrides: {key: value})."""
+    lines = text.splitlines()
+    for key, val in overrides.items():
+        for i, line in enumerate(lines):
+            if line.split() and line.split()[0] == key:
+                lines[i] = f"{key:<20s}{val}    # set with --set"
+                break
+        else:
+            lines.append(f"{key:<20s}{val}    # set with --set")
+    return "\n".join(lines) + "\n"
+
+
+def write_ecf(stage, visit, ecfdir, topdir, inputdir, outputdir, cores, overrides=None):
     """Fill one template and write it as S<stage>_<visit>.ecf in ecfdir."""
     text = open(os.path.join(TEMPLATES, f"S{stage}_trappist1.ecf")).read()
     repl = {"{TOPDIR}": topdir, "{INPUTDIR}": inputdir, "{OUTPUTDIR}": outputdir,
@@ -90,13 +106,16 @@ def write_ecf(stage, visit, ecfdir, topdir, inputdir, outputdir, cores):
             "{S3_MAXMEM}": f"{cores['s3_maxmem']:.3f}"}
     for k, v in repl.items():
         text = text.replace(k, v)
+    if overrides and overrides.get(stage):
+        text = apply_overrides(text, overrides[stage])
     path = os.path.join(ecfdir, f"S{stage}_{visit}.ecf")
     with open(path, "w") as f:
         f.write(text)
     return path
 
 
-def reduce_visit(visit, src_rel, drive, from_rateints, cores):
+def reduce_visit(visit, src_rel, drive, from_rateints, cores, base_name="reduction", overrides=None,
+                 start_stage=1):
     """Run Eureka! Stages 1-4 (or 2-4) for one visit in this process."""
     import matplotlib
     matplotlib.use("Agg")
@@ -107,7 +126,7 @@ def reduce_visit(visit, src_rel, drive, from_rateints, cores):
     import eureka.S4_generate_lightcurves.s4_genLC as s4
     eureka.lib.plots.set_rc(style="eureka", usetex=False, filetype=".png")
 
-    base = os.path.join("reduction_rateints" if from_rateints else "reduction", visit)
+    base = os.path.join(base_name, visit)
     ecfdir = os.path.join(drive, base, "ecf")
     os.makedirs(ecfdir, exist_ok=True)
     topdir = os.path.join(drive, "")
@@ -118,17 +137,19 @@ def reduce_visit(visit, src_rel, drive, from_rateints, cores):
             3: (f"{base}/Stage2", f"{base}/Stage3"),
             4: (f"{base}/Stage3", f"{base}/Stage4")}
     for st, (i, o) in dirs.items():
-        write_ecf(st, visit, ecfdir, topdir, i, o, cores)
+        write_ecf(st, visit, ecfdir, topdir, i, o, cores, overrides)
 
     t0 = time.time()
-    meta = None
-    if not from_rateints:
+    meta = None              # with meta None, Eureka! finds the newest output of the previous stage
+    if not from_rateints and start_stage <= 1:
         meta = s1.rampfitJWST(visit, ecf_path=ecfdir + os.sep)
         print(f"  Stage 1 done ({(time.time()-t0)/60:.0f} min)", flush=True)
-    meta = s2.calibrateJWST(visit, ecf_path=ecfdir + os.sep, s1_meta=meta)
-    print(f"  Stage 2 done ({(time.time()-t0)/60:.0f} min)", flush=True)
-    spec, meta = s3.reduce(visit, ecf_path=ecfdir + os.sep, s2_meta=meta)
-    print(f"  Stage 3 done ({(time.time()-t0)/60:.0f} min)", flush=True)
+    if start_stage <= 2:
+        meta = s2.calibrateJWST(visit, ecf_path=ecfdir + os.sep, s1_meta=meta)
+        print(f"  Stage 2 done ({(time.time()-t0)/60:.0f} min)", flush=True)
+    if start_stage <= 3:
+        spec, meta = s3.reduce(visit, ecf_path=ecfdir + os.sep, s2_meta=meta)
+        print(f"  Stage 3 done ({(time.time()-t0)/60:.0f} min)", flush=True)
     spec, lc, meta = s4.genlc(visit, ecf_path=ecfdir + os.sep, s3_meta=meta)
     print(f"  Stage 4 done ({(time.time()-t0)/60:.0f} min)", flush=True)
     open(os.path.join(drive, base, "S4_DONE"), "w").write(time.ctime() + "\n")
@@ -157,7 +178,10 @@ def prefetch_crds(drive, visits, level):
     """Download every CRDS reference file the visits will need (one file per visit)."""
     files = []
     for v, (p, rel) in visits.items():
-        segs = sorted(glob.glob(os.path.join(drive, rel, f"*_{level}.fits")))
+        # science exposures only (activity 04101); the target-acquisition images
+        # (02101) use a different mode and would select the wrong reference files
+        segs = sorted(f for f in glob.glob(os.path.join(drive, rel, f"*_{level}.fits"))
+                      if "_02101_" not in os.path.basename(f))
         if segs:
             files.append(segs[0])
     print(f"Fetching CRDS reference files for {len(files)} visits into {os.environ['CRDS_PATH']} ...", flush=True)
@@ -203,6 +227,12 @@ def run_parallel(a, visits, base):
                 cmd.append("--from-rateints")
             if a.offline:
                 cmd.append("--offline")
+            if a.tag:
+                cmd += ["--tag", a.tag]
+            if a.start_stage > 1:
+                cmd += ["--start-stage", str(a.start_stage)]
+            if a.set:
+                cmd += ["--set"] + a.set
             log = open(os.path.join(logdir, f"{v}.log"), "w")
             running[v] = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT)
             print(f"{time.strftime('%H:%M')}  {v} started  (free memory {free:.0f} GB)", flush=True)
@@ -228,6 +258,11 @@ def main():
     ap.add_argument("--s3-ncpu", type=int, default=2)
     ap.add_argument("--max-cores", default="none", choices=["none", "quarter", "half", "all"])
     ap.add_argument("--min-free-gb", type=float, default=12.0)
+    ap.add_argument("--start-stage", type=int, default=1, choices=[1, 2, 3, 4],
+                    help="first stage to run; earlier stages must already be done (default 1)")
+    ap.add_argument("--tag", help="write to reduction_<tag>/ instead of reduction/ (for alternative settings)")
+    ap.add_argument("--set", nargs="+", default=[], metavar="S<n>:KEY=VALUE",
+                    help="override control-file settings, e.g. S1:update_sat_flags=False")
     ap.add_argument("--child", action="store_true", help=argparse.SUPPRESS)
     a = ap.parse_args()
     a.drive = os.path.abspath(os.path.expanduser(a.drive))
@@ -238,6 +273,13 @@ def main():
         os.environ["CRDS_MODE"] = "local"          # use the cache only, never contact the server
     level = "rateints" if a.from_rateints else "uncal"
     base = "reduction_rateints" if a.from_rateints else "reduction"
+    if a.tag:
+        base = f"{base}_{a.tag}"
+    overrides = {}
+    for item in a.set:
+        st, kv = item.split(":", 1)
+        key, val = kv.split("=", 1)
+        overrides.setdefault(int(st.lstrip("Ss")), {})[key] = val
     visits = find_visits(a.drive, level, a.programs)
     if a.visits:
         missing = [v for v in a.visits if v not in visits]
@@ -280,7 +322,7 @@ def main():
         open(os.path.join(vdir, "RUNNING"), "w").write(f"{os.getpid()} {time.ctime()}\n")
         print(f"[{k}/{len(visits)}] {visit} (GO {int(prog)}) started {time.ctime()}", flush=True)
         try:
-            reduce_visit(visit, rel, a.drive, a.from_rateints, cores)
+            reduce_visit(visit, rel, a.drive, a.from_rateints, cores, base, overrides, a.start_stage)
         except Exception:
             print(f"  {visit} FAILED:")
             traceback.print_exc()
