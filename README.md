@@ -15,8 +15,10 @@ spectrum falls on detector NRS1. Spectroscopic light curves are built in the 67 
 bins of Espinoza et al. (2025), so the results can be compared bin by bin with the DREAMS
 spectrum.
 
-Author: Muhammad Waqas ([ORCID 0009-0002-1134-2666](https://orcid.org/0009-0002-1134-2666)).
-This repository accompanies a paper in preparation.
+Authors: Muhammad Waqas ([ORCID 0009-0002-1134-2666](https://orcid.org/0009-0002-1134-2666))
+and Taufiq Hidayat ([ORCID 0009-0008-8045-6054](https://orcid.org/0009-0008-8045-6054)),
+Institut Teknologi Bandung.
+This repository accompanies a paper in preparation by M. Waqas and T. Hidayat.
 
 ## Contents
 
